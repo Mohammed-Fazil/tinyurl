@@ -2,6 +2,8 @@ package com.tinyurl.controller;
 
 import java.net.URI;
 
+import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -30,7 +32,7 @@ public class UrlController {
 
 		CreateUrlResponse response = urlService.createShortUrl(request);
 
-		return ResponseEntity.ok(response);
+		return ResponseEntity.status(HttpStatus.CREATED).body(response);
 	}
 
 	@GetMapping("/{shortCode}")
