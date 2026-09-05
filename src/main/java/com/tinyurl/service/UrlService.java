@@ -1,17 +1,24 @@
 package com.tinyurl.service;
 
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Optional;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import com.tinyurl.dto.CreateUrlRequest;
 import com.tinyurl.dto.CreateUrlResponse;
+import com.tinyurl.dto.UrlResponse;
 import com.tinyurl.entity.UrlMapping;
 import com.tinyurl.exception.ShortUrlNotFoundException;
 import com.tinyurl.repository.UrlMappingRepository;
 
 @Service
 public class UrlService {
+
+	@Value("${tinyurl.base-url}")
+	private String baseUrl;
 
 	private final UrlMappingRepository urlMappingRepository;
 	private final CounterService counterService;
@@ -51,6 +58,42 @@ public class UrlService {
 				.orElseThrow(() -> new ShortUrlNotFoundException("Short URL not found"));
 
 		return urlMapping.getOriginalUrl();
+	}
+
+	public List<UrlResponse> getUserUrls(String userId) {
+
+		return urlMappingRepository.findByUserId(userId).stream()
+				.map(urlMapping -> new UrlResponse(urlMapping.getId(), urlMapping.getShortCode(),
+						urlMapping.getOriginalUrl(), baseUrl + "/" + urlMapping.getShortCode(),
+						urlMapping.getCreatedAt()))
+				.toList();
+
+	}
+
+	public void deleteUrl(String id, String userId) {
+
+		System.out.println("SERVICE id     = " + id);
+		System.out.println("SERVICE userId = " + userId);
+
+		Optional<UrlMapping> byId = urlMappingRepository.findById(id);
+
+		System.out.println("FOUND BY ID = " + byId.isPresent());
+
+		Optional<UrlMapping> byIdAndUserId = urlMappingRepository.findByIdAndUserId(id, userId);
+
+		System.out.println("FOUND BY ID AND USER = " + byIdAndUserId.isPresent());
+
+		UrlMapping urlMapping = byIdAndUserId.orElseThrow(() -> new ShortUrlNotFoundException("Short URL not found"));
+
+		urlMappingRepository.delete(urlMapping);
+	}
+
+	public void deleteUrlAsAdmin(String id) {
+
+		UrlMapping urlMapping = urlMappingRepository.findById(id)
+				.orElseThrow(() -> new ShortUrlNotFoundException("Short URL not found"));
+
+		urlMappingRepository.delete(urlMapping);
 	}
 
 }

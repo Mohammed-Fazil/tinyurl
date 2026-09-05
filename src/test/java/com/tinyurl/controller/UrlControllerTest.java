@@ -12,6 +12,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -24,6 +25,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import com.tinyurl.dto.CreateUrlResponse;
+import com.tinyurl.dto.UrlResponse;
 import com.tinyurl.exception.GlobalExceptionHandler;
 import com.tinyurl.security.JwtAuthenticationToken;
 import com.tinyurl.service.UrlService;
@@ -94,5 +96,29 @@ class UrlControllerTest {
 				.andExpect(jsonPath("$.message").value("URL must start with http:// or https://"));
 
 		verifyNoInteractions(urlService);
+	}
+
+	@Test
+	void shouldReturnUserUrls() throws Exception {
+
+		String userId = "user-123";
+		String username = "fazil";
+
+		when(urlService.getUserUrls(userId)).thenReturn(List.of(
+				new UrlResponse("id-1", "w7e", "https://google.com", "http://localhost:8080/w7e",
+						LocalDateTime.of(2026, 9, 5, 10, 30)),
+				new UrlResponse("id-2", "w7f", "https://github.com", "http://localhost:8080/w7f",
+						LocalDateTime.of(2026, 9, 5, 11, 30))));
+
+		JwtAuthenticationToken authentication = new JwtAuthenticationToken("dummy-token", userId, username,
+				List.of(new SimpleGrantedAuthority("ROLE_USER")));
+
+		mockMvc.perform(get("/api/urls").principal(authentication)).andExpect(status().isOk())
+				.andExpect(jsonPath("$[0].id").value("id-1")).andExpect(jsonPath("$[0].shortCode").value("w7e"))
+				.andExpect(jsonPath("$[0].originalUrl").value("https://google.com"))
+				.andExpect(jsonPath("$[0].shortUrl").value("http://localhost:8080/w7e"))
+				.andExpect(jsonPath("$[1].id").value("id-2")).andExpect(jsonPath("$[1].shortCode").value("w7f"));
+
+		verify(urlService).getUserUrls(userId);
 	}
 }

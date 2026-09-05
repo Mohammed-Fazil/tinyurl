@@ -5,8 +5,11 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
+import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -16,6 +19,7 @@ import org.mockito.MockitoAnnotations;
 
 import com.tinyurl.dto.CreateUrlRequest;
 import com.tinyurl.dto.CreateUrlResponse;
+import com.tinyurl.dto.UrlResponse;
 import com.tinyurl.entity.UrlMapping;
 import com.tinyurl.exception.InvalidUrlException;
 import com.tinyurl.exception.ShortUrlNotFoundException;
@@ -127,5 +131,102 @@ class UrlServiceTest {
 		verifyNoInteractions(counterService);
 
 		verifyNoInteractions(urlMappingRepository);
+	}
+
+	@Test
+	void shouldReturnUserUrls() {
+
+		// Given
+		String userId = "user-123";
+
+		UrlMapping url1 = UrlMapping.builder().id("id-1").sequenceId(123456L).shortCode("w7e")
+				.originalUrl("https://google.com").userId(userId).createdAt(LocalDateTime.of(2026, 9, 5, 10, 30))
+				.build();
+
+		UrlMapping url2 = UrlMapping.builder().id("id-2").sequenceId(123457L).shortCode("w7f")
+				.originalUrl("https://github.com").userId(userId).createdAt(LocalDateTime.of(2026, 9, 5, 11, 30))
+				.build();
+
+		when(urlMappingRepository.findByUserId(userId)).thenReturn(List.of(url1, url2));
+
+		// When
+		List<UrlResponse> responses = urlService.getUserUrls(userId);
+
+		// Then
+		assertEquals(2, responses.size());
+
+		assertEquals("id-1", responses.get(0).id());
+		assertEquals("w7e", responses.get(0).shortCode());
+		assertEquals("https://google.com", responses.get(0).originalUrl());
+
+		assertEquals("id-2", responses.get(1).id());
+		assertEquals("w7f", responses.get(1).shortCode());
+		assertEquals("https://github.com", responses.get(1).originalUrl());
+
+		verify(urlMappingRepository).findByUserId(userId);
+	}
+
+	@Test
+	void shouldDeleteUserOwnUrl() {
+
+		String userId = "user-123";
+		String urlId = "url-1";
+
+		UrlMapping urlMapping = UrlMapping.builder().id(urlId).shortCode("w7e").originalUrl("https://google.com")
+				.userId(userId).build();
+
+		when(urlMappingRepository.findByIdAndUserId(urlId, userId)).thenReturn(Optional.of(urlMapping));
+
+		urlService.deleteUrl(urlId, userId);
+
+		verify(urlMappingRepository).findByIdAndUserId(urlId, userId);
+
+		verify(urlMappingRepository).delete(urlMapping);
+	}
+
+	@Test
+	void shouldNotDeleteUrlOwnedByAnotherUser() {
+
+		String userId = "user-123";
+		String urlId = "url-1";
+
+		when(urlMappingRepository.findByIdAndUserId(urlId, userId)).thenReturn(Optional.empty());
+
+		assertThrows(ShortUrlNotFoundException.class, () -> urlService.deleteUrl(urlId, userId));
+
+		verify(urlMappingRepository).findByIdAndUserId(urlId, userId);
+
+		verifyNoMoreInteractions(urlMappingRepository);
+	}
+
+	@Test
+	void shouldDeleteAnyUrlAsAdmin() {
+
+		String urlId = "url-1";
+
+		UrlMapping urlMapping = UrlMapping.builder().id(urlId).shortCode("w7e").originalUrl("https://google.com")
+				.userId("user-456").build();
+
+		when(urlMappingRepository.findById(urlId)).thenReturn(Optional.of(urlMapping));
+
+		urlService.deleteUrlAsAdmin(urlId);
+
+		verify(urlMappingRepository).findById(urlId);
+
+		verify(urlMappingRepository).delete(urlMapping);
+	}
+
+	@Test
+	void shouldThrowExceptionWhenAdminDeletesUnknownUrl() {
+
+		String urlId = "unknown";
+
+		when(urlMappingRepository.findById(urlId)).thenReturn(Optional.empty());
+
+		assertThrows(ShortUrlNotFoundException.class, () -> urlService.deleteUrlAsAdmin(urlId));
+
+		verify(urlMappingRepository).findById(urlId);
+
+		verifyNoMoreInteractions(urlMappingRepository);
 	}
 }
