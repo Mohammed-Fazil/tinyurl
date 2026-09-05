@@ -1,6 +1,7 @@
 package com.tinyurl.controller;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -11,16 +12,20 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.util.List;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.springframework.http.MediaType;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import com.tinyurl.dto.CreateUrlResponse;
 import com.tinyurl.exception.GlobalExceptionHandler;
+import com.tinyurl.security.JwtAuthenticationToken;
 import com.tinyurl.service.UrlService;
 
 class UrlControllerTest {
@@ -45,19 +50,26 @@ class UrlControllerTest {
 	@Test
 	void shouldCreateShortUrl() throws Exception {
 
-		when(urlService.createShortUrl(any())).thenReturn(new CreateUrlResponse("http://localhost:8080/w7e"));
+		String userId = "user-123";
+		String username = "fazil";
 
-		mockMvc.perform(post("/api/urls").contentType(MediaType.APPLICATION_JSON).content("""
-				    {
-				        "url": "https://www.google.com"
-				    }
-				""")).andExpect(status().isOk()).andExpect(content().json("""
-				    {
-				        "shortUrl": "http://localhost:8080/w7e"
-				    }
+		when(urlService.createShortUrl(any(), eq(userId)))
+				.thenReturn(new CreateUrlResponse("http://localhost:8080/w7e"));
+
+		JwtAuthenticationToken authentication = new JwtAuthenticationToken("dummy-token", userId, username,
+				List.of(new SimpleGrantedAuthority("ROLE_USER")));
+
+		mockMvc.perform(post("/api/urls").principal(authentication).contentType(MediaType.APPLICATION_JSON).content("""
+				{
+				    "url": "https://www.google.com"
+				}
+				""")).andExpect(status().isCreated()).andExpect(content().json("""
+				{
+				    "shortUrl": "http://localhost:8080/w7e"
+				}
 				"""));
 
-		verify(urlService).createShortUrl(any());
+		verify(urlService).createShortUrl(any(), eq(userId));
 	}
 
 	@Test
@@ -75,9 +87,9 @@ class UrlControllerTest {
 	void shouldReturnBadRequestForInvalidUrl() throws Exception {
 
 		mockMvc.perform(post("/api/urls").contentType(MediaType.APPLICATION_JSON).content("""
-				    {
-				        "url": "google.com"
-				    }
+				{
+				    "url": "google.com"
+				}
 				""")).andExpect(status().isBadRequest())
 				.andExpect(jsonPath("$.message").value("URL must start with http:// or https://"));
 

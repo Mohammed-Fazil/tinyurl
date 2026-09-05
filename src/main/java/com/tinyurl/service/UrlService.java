@@ -27,16 +27,16 @@ public class UrlService {
 		this.urlValidator = urlValidator;
 	}
 
-	public CreateUrlResponse createShortUrl(CreateUrlRequest request) {
-		
-		 urlValidator.validate(request.url());
+	public CreateUrlResponse createShortUrl(CreateUrlRequest request, String userId) {
+
+		urlValidator.validate(request.url());
 
 		long sequenceId = counterService.getNextSequence();
 
 		String shortCode = base62Encoder.encode(sequenceId);
 
 		UrlMapping urlMapping = UrlMapping.builder().sequenceId(sequenceId).shortCode(shortCode)
-				.originalUrl(request.url()).createdAt(LocalDateTime.now()).build();
+				.originalUrl(request.url()).userId(userId).createdAt(LocalDateTime.now()).build();
 
 		urlMappingRepository.save(urlMapping);
 

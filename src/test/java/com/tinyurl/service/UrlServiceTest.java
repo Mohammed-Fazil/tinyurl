@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import java.util.Optional;
@@ -11,7 +12,6 @@ import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
-import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
 
 import com.tinyurl.dto.CreateUrlRequest;
@@ -52,12 +52,14 @@ class UrlServiceTest {
 		// Given
 		CreateUrlRequest request = new CreateUrlRequest("https://example.com");
 
+		String userId = "user-123";
+
 		when(counterService.getNextSequence()).thenReturn(123456L);
 
 		when(urlMappingRepository.save(any(UrlMapping.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
 		// When
-		CreateUrlResponse response = urlService.createShortUrl(request);
+		CreateUrlResponse response = urlService.createShortUrl(request, userId);
 
 		// Then
 		assertEquals("http://localhost:8080/w7e", response.shortUrl());
@@ -100,6 +102,7 @@ class UrlServiceTest {
 		// When & Then
 		ShortUrlNotFoundException exception = assertThrows(ShortUrlNotFoundException.class,
 				() -> urlService.getOriginalUrl(shortCode));
+
 		assertEquals("Short URL not found", exception.getMessage());
 
 		verify(urlMappingRepository).findByShortCode(shortCode);
@@ -111,16 +114,18 @@ class UrlServiceTest {
 		// Given
 		CreateUrlRequest request = new CreateUrlRequest("google.com");
 
-		Mockito.doThrow(new InvalidUrlException("URL must start with http:// or https://")).when(urlValidator)
-				.validate(request.url());
+		String userId = "user-123";
+
+		org.mockito.Mockito.doThrow(new InvalidUrlException("URL must start with http:// or https://"))
+				.when(urlValidator).validate(request.url());
 
 		// When & Then
-		assertThrows(InvalidUrlException.class, () -> urlService.createShortUrl(request));
+		assertThrows(InvalidUrlException.class, () -> urlService.createShortUrl(request, userId));
 
 		verify(urlValidator).validate(request.url());
 
-		Mockito.verifyNoInteractions(counterService);
+		verifyNoInteractions(counterService);
 
-		Mockito.verifyNoInteractions(urlMappingRepository);
+		verifyNoInteractions(urlMappingRepository);
 	}
 }
