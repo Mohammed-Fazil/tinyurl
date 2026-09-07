@@ -47,7 +47,7 @@ public class UrlService {
 
 		urlMappingRepository.save(urlMapping);
 
-		String shortUrl = "http://localhost:8080/" + shortCode;
+		String shortUrl = baseUrl +"/"+ shortCode;
 
 		return new CreateUrlResponse(shortUrl);
 	}
@@ -72,16 +72,9 @@ public class UrlService {
 
 	public void deleteUrl(String id, String userId) {
 
-		System.out.println("SERVICE id     = " + id);
-		System.out.println("SERVICE userId = " + userId);
-
 		Optional<UrlMapping> byId = urlMappingRepository.findById(id);
 
-		System.out.println("FOUND BY ID = " + byId.isPresent());
-
 		Optional<UrlMapping> byIdAndUserId = urlMappingRepository.findByIdAndUserId(id, userId);
-
-		System.out.println("FOUND BY ID AND USER = " + byIdAndUserId.isPresent());
 
 		UrlMapping urlMapping = byIdAndUserId.orElseThrow(() -> new ShortUrlNotFoundException("Short URL not found"));
 
