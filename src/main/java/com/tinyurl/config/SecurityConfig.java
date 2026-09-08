@@ -57,6 +57,7 @@ public class SecurityConfig {
 				.exceptionHandling(exception -> exception.authenticationEntryPoint(authenticationEntryPoint))
 
 				.authorizeHttpRequests(auth -> auth.requestMatchers("/{shortCode}").permitAll()
+						.requestMatchers("/actuator/health").permitAll()
 
 						.anyRequest().authenticated())
 
